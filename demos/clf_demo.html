@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Breast Cancer Classification (ONNX)</title>
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+<style>body{font-family:system-ui,Arial;margin:24px;max-width:900px}</style>
+</head>
+<body>
+<h2>Breast Cancer — Classification (ONNX)</h2>
+<p>Input: 30 features in sklearn’s <code>load_breast_cancer</code> order (comma-separated). Paste raw values; the page standardizes them using the saved mean/scale.</p>
+<p><input id="feat" style="width:100%" placeholder="30 comma-separated numbers"></p>
+<button id="run">Predict</button>
+<pre id="out"></pre>
+<script>
+const MODEL_URL = "../clf_model.onnx";
+const PREP_URL = "../clf_preproc.json";
+let prep=null, session=null;
+async function loadAll(){
+  prep = await fetch(PREP_URL).then(r=>r.json());
+  session = await ort.InferenceSession.create(MODEL_URL);
+}
+function standardize(x, mean, scale){return x.map((v,i)=> (v-mean[i])/scale[i]);}
+function sigmoid(z){return 1/(1+Math.exp(-z));}
+document.getElementById('run').onclick = async ()=>{
+  try{
+    if(!session) await loadAll();
+    const raw = document.getElementById('feat').value.split(',').map(s=>parseFloat(s.trim()));
+    if(raw.length !== prep.feature_names.length) throw new Error("Expected "+prep.feature_names.length+" values.");
+    const x = standardize(raw, prep.scaler_mean, prep.scaler_scale);
+    const input = new ort.Tensor('float32', Float32Array.from(x), [1, x.length]);
+    const out = await session.run({input});
+    const logit = out.logits.data[0];
+    const prob = sigmoid(logit);
+    document.getElementById('out').textContent = `logit=${logit.toFixed(4)}  prob_malignant=${prob.toFixed(4)}  pred=${prob>=0.5?'malignant':'benign'}`;
+  }catch(e){ document.getElementById('out').textContent = e.toString(); }
+};
+</script>
+</body>
+</html>

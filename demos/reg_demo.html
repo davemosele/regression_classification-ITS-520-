@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Diabetes Regression (ONNX)</title>
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+<style>body{font-family:system-ui,Arial;margin:24px;max-width:900px}</style>
+</head>
+<body>
+<h2>Diabetes — Regression (ONNX)</h2>
+<p>Features (order, sklearn <code>load_diabetes</code>):</p>
+<p><code>age, sex, bmi, bp, s1, s2, s3, s4, s5, s6</code></p>
+<p><input id="feat" style="width:100%" placeholder="10 comma-separated numbers (raw scale, not standardized)"></p>
+<button id="run">Predict progression</button>
+<pre id="out"></pre>
+<script>
+const MODEL_URL = "../reg_model.onnx";
+const PREP_URL = "../reg_preproc.json";
+let prep=null, session=null;
+async function loadAll(){
+  prep = await fetch(PREP_URL).then(r=>r.json());
+  session = await ort.InferenceSession.create(MODEL_URL);
+}
+function standardize(x, mean, scale){return x.map((v,i)=> (v-mean[i])/scale[i]);}
+document.getElementById('run').onclick = async ()=>{
+  try{
+    if(!session) await loadAll();
+    const raw = document.getElementById('feat').value.split(',').map(s=>parseFloat(s.trim()));
+    if(raw.length !== prep.feature_names.length) throw new Error("Expected "+prep.feature_names.length+" values.");
+    const x = standardize(raw, prep.scaler_mean, prep.scaler_scale);
+    const input = new ort.Tensor('float32', Float32Array.from(x), [1, x.length]);
+    const out = await session.run({input});
+    document.getElementById('out').textContent = "Predicted disease progression score: " + out.pred.data[0].toFixed(3);
+  }catch(e){ document.getElementById('out').textContent = e.toString(); }
+};
+</script>
+</body>
+</html>
