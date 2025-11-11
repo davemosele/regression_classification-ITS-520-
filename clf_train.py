@@ -62,7 +62,7 @@ def eval_and_report(model, Xtr, ytr, Xte, yte, name):
     print("Confusion matrix:\n", cm)
     return {"acc": acc, "precision": prec, "recall": rec, "f1": f1, "cm": cm.tolist()}
 
-def export_onnx(model, scaler, feature_names, out_path="clf_model.onnx"):
+def export_onnx(model, scaler, feature_names, out_path="clf_model_v2.onnx"):
     model.eval()
     in_dim = len(feature_names)
     dummy = torch.randn(1, in_dim, dtype=torch.float32)
@@ -70,7 +70,8 @@ def export_onnx(model, scaler, feature_names, out_path="clf_model.onnx"):
         model, dummy, out_path,
         input_names=["input"], output_names=["logits"],
         dynamic_axes={"input": {0: "batch"}, "logits": {0: "batch"}},
-        opset_version=17
+        opset_version=17,
+        use_external_data_format=False
     )
     prep = {
         "feature_names": feature_names,
@@ -109,7 +110,7 @@ def main():
 
     best, best_name = (mlp, "MLP") if m_mlp["f1"] >= m_lin["f1"] else (linear, "Linear")
     print(f"\nBest classification model: {best_name}")
-    export_onnx(best, scaler, feature_names, out_path="clf_model.onnx")
+    export_onnx(best, scaler, feature_names, out_path="clf_model_v2.onnx")
 
 if __name__ == "__main__":
     main()

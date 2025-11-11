@@ -60,7 +60,7 @@ def eval_and_report(model, Xtr, ytr, Xte, yte, name):
     print(f"\n[{name}] R2 train={r2_tr:.4f}  R2 test={r2_te:.4f}  MSE test={mse_te:.4f}  MAE test={mae_te:.4f}")
     return {"r2_train": r2_tr, "r2_test": r2_te, "mse_test": mse_te, "mae_test": mae_te}
 
-def export_onnx(model, scaler, feature_names, out_path="reg_model.onnx"):
+def export_onnx(model, scaler, feature_names, out_path="reg_model_v2.onnx"):
     model.eval()
     in_dim = len(feature_names)
     dummy = torch.randn(1, in_dim, dtype=torch.float32)
@@ -68,7 +68,8 @@ def export_onnx(model, scaler, feature_names, out_path="reg_model.onnx"):
         model, dummy, out_path,
         input_names=["input"], output_names=["pred"],
         dynamic_axes={"input": {0: "batch"}, "pred": {0: "batch"}},
-        opset_version=17
+        opset_version=17,
+        use_external_data_format=False
     )
     prep = {
         "feature_names": feature_names,
@@ -103,7 +104,7 @@ def main():
 
     best, best_name = (mlp, "MLP") if m_mlp["r2_test"] >= m_lin["r2_test"] else (linear, "Linear")
     print(f"\nBest regression model: {best_name}")
-    export_onnx(best, scaler, feature_names, out_path="reg_model.onnx")
+    export_onnx(best, scaler, feature_names, out_path="reg_model_v2.onnx")
 
 if __name__ == "__main__":
     main()
